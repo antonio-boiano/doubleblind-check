@@ -1,4 +1,4 @@
-# doubleblind-check
+# Doubleblind checker
 **Goal:** check PDFs for double‑blind submission compliance: strip deanonymizing metadata, and flag emails/ORCIDs/phones, links (incl. `mailto:`), bookmarks, and EU funding references (Horizon/ERC/MSCA/COST/FP7 + grant numbers).
 
 ## One-file CLI
