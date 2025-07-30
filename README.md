@@ -12,7 +12,6 @@ and perform a heuristic privacy scan for emails, ORCID iDs, phone-like numbers, 
 - XObjects: Form (often PDF figures) and Image; parses any `/Metadata` on them.
 - Heuristic PII scan (`--scan-pii`): emails, ORCIDs, phone-like strings, keywords like "corresponding author".
 - **EU project detection**: Horizon 2020/Horizon Europe, ERC, MSCA, COST Action, FP7; grant agreement numbers.
-- Optional progress bar/spinner (uses `tqdm` if available; falls back to simple status messages).
 
 ## Install
 
