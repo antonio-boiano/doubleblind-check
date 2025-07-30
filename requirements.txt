@@ -1,0 +1,4 @@
+pikepdf>=9.0.0
+lxml>=4.9.0
+pdfminer.six>=20221105
+tqdm>=4.66.0
