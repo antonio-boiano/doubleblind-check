@@ -1,66 +1,76 @@
-# pdf-privacy-scan
+# doubleblind-lint (standalone)
 
-A small, modular toolkit to extract deep metadata from PDFs (especially LaTeX-generated articles)
-and perform a heuristic privacy scan for emails, ORCID iDs, phone-like numbers, and **EU project markers**
-(e.g., *Horizon 2020/Horizon Europe*, *ERC*, *MSCA*, *COST Action*, and *grant agreement No. 123456*).
+**Goal:** check PDFs for double‑blind submission compliance: strip deanonymizing metadata, and flag emails/ORCIDs/phones, links (incl. `mailto:`), bookmarks, and EU funding references (Horizon/ERC/MSCA/COST/FP7 + grant numbers).
 
-## Features
+## One-file CLI
 
-- Info dictionary, XMP, trailer IDs (hex + repr), PDF version/encryption.
-- Embedded files (optionally dump them).
-- Fonts used.
-- XObjects: Form (often PDF figures) and Image; parses any `/Metadata` on them.
-- Heuristic PII scan (`--scan-pii`): emails, ORCIDs, phone-like strings, keywords like "corresponding author".
-- **EU project detection**: Horizon 2020/Horizon Europe, ERC, MSCA, COST Action, FP7; grant agreement numbers.
+This repo is a **single Python script** (`doubleblind_lint.py`). No package install is required.
 
-## Install
+### Install deps
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # (Windows: .venv\Scripts\activate)
-pip install -r requirements.txt
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt  # pikepdf, lxml, pdfminer.six, tqdm (optional)
 ```
 
-## CLI Usage
+### Run
 
 ```bash
-python -m pdf_privacy_scan.cli path/to/paper.pdf --pretty
-python -m pdf_privacy_scan.cli path/to/paper.pdf --scan-pii --pretty
-python -m pdf_privacy_scan.cli path/to/paper.pdf --scan-pii --dump-attachments out_dir --pretty
-# Fail CI if anything sensitive is found:
-python -m pdf_privacy_scan.cli path/to/paper.pdf --scan-pii --fail-on-findings
+python doubleblind_lint.py INPUT.pdf [OUTPUT.json] [options]
 ```
 
-### Progress display
+Examples:
+```bash
+# Print JSON to stdout, metadata only
+python doubleblind_lint.py paper.pdf --pretty
 
-Use `--progress` (default on for TTY). To suppress: `--no-progress`.
+# Add PII/EU scan and progress, write to a file
+python doubleblind_lint.py paper.pdf out.json --scan-pii --progress --pretty
 
-The progress bar shows **page text extraction** and **PII scanning**. If `tqdm` is not installed,
-simple step messages will be printed instead.
+# CI mode: nonzero exit if anything found
+python doubleblind_lint.py paper.pdf --scan-pii --fail-on-findings
+echo $?   # 3 if findings, 0 otherwise
+```
 
-## Library Usage (integrate `--scan-pii` in your code)
+**Useful options**
+- `--scan-pii` — run text + links scan for emails, ORCIDs, phone-like strings, EU markers; stores results in `pii_text_scan` and `pii_links_bookmarks`.
+- `--progress` / `--no-progress` — show progress (uses `tqdm` if available).
+- `--dump-attachments DIR` — extract any embedded files.
+- `--fail-on-findings` — exit code 3 if anything sensitive/identifying is detected.
+
+## Contributing to the PII/EU scan
+
+Open `doubleblind_lint.py` and search for **`DETECTORS`**. It’s a simple list of dicts:
 
 ```python
-from pdf_privacy_scan.metadata_extractor import extract_metadata
-from pdf_privacy_scan.pii_scanner import extract_text_by_page, scan_text_pages, collect_links_and_bookmarks
-
-pdf_path = "paper.pdf"
-report = extract_metadata(pdf_path)  # dict
-
-# Enable PII scan
-texts = extract_text_by_page(pdf_path)
-pii_text = scan_text_pages(texts)  # dict with emails/orcids/phones/eu markers
-links = collect_links_and_bookmarks(pdf_path)
-
-report["pii_text_scan"] = pii_text
-report["pii_links_bookmarks"] = links
+DETECTORS = [
+    {"name": "EMAIL", "regex": EMAIL_RE, "target": "emails"},
+    {"name": "ORCID", "regex": ORCID_RE, "target": "orcids"},
+    # ...
+    {"name": "GRANT_AGREEMENT", "regex": GRANT_AGREEMENT_RE, "target": "eu_markers",
+     "normalize": lambda s, m=None: {"type": "GRANT_AGREEMENT", "value": s, "grant_no": (m.group(2) if m else None)}},
+]
 ```
 
-## Notes & Limits
+Add new items to detect more patterns. The scan automatically aggregates:
+- `eu_programmes`: unique set of programme types seen (HORIZON, FP7, ERC, MSCA, COST)
+- `eu_grant_numbers`: unique list of grant IDs collected
 
-- No OCR; image-only pages require an OCR step (can be added on request).
-- Heuristics: may miss or over-flag some phones; email/ORCID are reliable.
-- EU marker detection is pattern-based; it flags likely acknowledgements and grant codes for review.
+If you need a custom detector that does more than a regex, add your own `normalize` callable; it receives the match string and the `re.Match` object.
+
+## What it checks
+
+- **Metadata**: Info dictionary, XMP (robust), trailer IDs, version/encryption.
+- **Structure**: embedded files, fonts, Form/Image XObjects; extracts any XMP linked to XObjects.
+- **PII/EU (opt‑in)**: emails, ORCIDs, phone‑like strings, “corresponding author” cues, EU programme names and grant numbers.
+- **Links/bookmarks**: page annotations with URIs (`mailto:` flagged) and outline/bookmark titles.
+
+## Limits
+
+- No OCR; scanned PDFs require OCR to see text (can be added).
+- Heuristics for phones may over/under‑flag, emails/ORCIDs are reliable.
+- Regex‑based EU detection; treat as red‑flags to manually review.
 
 ## License
 
