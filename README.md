@@ -1,5 +1,4 @@
-# doubleblind-lint (standalone)
-
+# doubleblind-check
 **Goal:** check PDFs for double‑blind submission compliance: strip deanonymizing metadata, and flag emails/ORCIDs/phones, links (incl. `mailto:`), bookmarks, and EU funding references (Horizon/ERC/MSCA/COST/FP7 + grant numbers).
 
 ## One-file CLI
@@ -72,6 +71,4 @@ If you need a custom detector that does more than a regex, add your own `normali
 - Heuristics for phones may over/under‑flag, emails/ORCIDs are reliable.
 - Regex‑based EU detection; treat as red‑flags to manually review.
 
-## License
 
-MIT
